@@ -60,7 +60,7 @@ Random Forest (selected model)
 	•	Significantly outperformed logistic regression on all meaningful metrics
 
 
-# Tools Used
+## Tools Used
 
 	•	scikit-learn — model training, pipelines, preprocessing, evaluation
 	•	imbalanced-learn — class imbalance handling
@@ -68,6 +68,41 @@ Random Forest (selected model)
 	•	SQLAlchemy / pandas — data loading and feature preparation
 	•	OneHotEncoder + ColumnTransformer — categorical feature encoding inside a sklearn Pipeline
 
-# Output
+## Output
 the trained Random Forest model is saved to models/trial_failure_model.pkl and will be served via FastAPI in Phase 6
 
+
+# Phase 4: Deep - Learning using DistilliBERT transformer
+## Objective: Add an additional layer of failure predictions using transformer that classifies risk from raw text rather than structured metadata. This tests whether natural language in trial titles and conditions carries any predictive value. 
+
+## Approach
+ The approach is instea of hand selecting features like enrollement count and sponsor class, we use a distilliBERT model to read the raw text of each trial's title and learns which language patternscorrelate with trial failure. The transformer converts this into contextual embeddings: numberical representations of these word relationships, which are then passed to a classification head the calculates failure probability. 
+
+## Architecture
+• Model: distilbert-base-uncased — a distilled version of BERT, 40% smaller with 97% of BERT’s performance
+• Task: Binary sequence classification(success vs fail)
+• Input: trial title + conditions, concatenated with a SEP token separator 
+• Max sequence length: 128 tokens
+• Optimizer: adamW with learning rate 2e-5
+• Epochs: 3 epochs
+
+## Class Imbalance
+Unlike scikit learn, Pytorch transformers dont have a bult in class_weight parameter. Thus a weighted cross entropy loss was used and it penalized misclassified failure cases about 5 times more than completed cases.
+
+## Findings
+The distilliBERT ROC AUC was 0.662. while this was better than the initial random forest model, the finalized model still outperforms this (0.854 ROC AUC). This makes sense in the context of the problem. Text alone is a pretty weak signal to predict whether a clinical trial will be a failure. What actually helps predict failure is structured metadata about enrollment count, sponsor type, number of sites, funding source, etc.
+
+## Tools Used
+	•	PyTorch — model training, custom loss function, data loading
+	•	Hugging Face Transformers — DistilBERT pretrained weights and tokenizer
+	•	CrossEntropyLoss with class weights — imbalance handling
+	•	scikit-learn — evaluation metrics (ROC AUC, classification report)
+	•	SQLAlchemy / pandas — data loading from PostgreSQL
+## Output
+	•	Trained model saved to models/distilbert_trial/ for reuse in Phase 5
+	•	Random Forest (models/trial_failure_model.pkl) confirmed as the stronger production model
+
+
+# DEFINITIONS
+- epoch: one complete pass of the entire training dataset through the neural network model
+- class imbalance: refers to a situation where the number of examples in each class is unevenly distributed. 
