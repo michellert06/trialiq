@@ -103,6 +103,64 @@ The distilliBERT ROC AUC was 0.662. while this was better than the initial rando
 	•	Random Forest (models/trial_failure_model.pkl) confirmed as the stronger production model
 
 
+## Phase 5: Generative AI — RAG Chatbot (TrialIQ Assistant)
+
+## Objective
+Build a **Retrieval-Augmented Generation (RAG)** chatbot that answers plain-English questions about clinical trials by retrieving semantically relevant trials from a vector database and generating grounded answers using the Claude API.
+
+## What is RAG?
+RAG combines two systems:
+1. **Retrieval** — given a user question, find the most semantically similar documents in a database
+2. **Generation** — pass those documents as context to an LLM, which synthesizes a grounded answer
+
+This is superior to asking an LLM directly because the model answers from *your actual data*, not general training knowledge — meaning answers are current, specific, and traceable to real trial IDs.
+
+## Architecture
+User Question
+     │
+     ▼
+Embedding Model (all-MiniLM-L6-v2)
+     │  converts question to vector
+     ▼
+ChromaDB Vector Search
+     │  finds 5 most semantically similar trials
+     ▼
+Retrieved Trial Documents
+     │  passed as context
+     ▼
+Claude API (claude-haiku)
+     │  generates grounded answer citing NCT IDs
+     ▼
+Answer to User
+
+
+## How Semantic Search Works
+Each trial is converted into a text document combining its title, conditions, phase, status, sponsor, enrollment, and dates. The embedding model converts this text into a 384-dimension vector — a numerical representation of its meaning. When a user asks a question, the question is embedded the same way, and ChromaDB finds the trials whose vectors are closest in meaning (not just keyword matches).
+This means a question like "trials for memory loss in elderly patients" can correctly surface Alzheimer's trials even if the word "Alzheimer's" never appeared in the question.
+
+
+## Implementation
+• 4,803 trials embedded and indexed into ChromaDB
+• Embeddings generated using sentence-transformers/all-MiniLM-L6-v2 (90MB, runs locally)
+• Vector store persisted to data/chroma/ — no re-embedding needed on restart
+• System prompt instructs Claude to answer only from retrieved context and cite NCT IDs
+• Simple terminal chat loop for testing
+
+
+## Tools Used
+• sentence-transformers — local embedding model (all-MiniLM-L6-v2)
+• ChromaDB — local persistent vector database
+• Anthropic Python SDK — Claude Haiku for answer generation
+• python-dotenv — secure API key management via .env
+• SQLAlchemy / pandas — loading trial data from PostgreSQL
+
+## Files
+• src/build_vectorstore.py — embeds all trials and builds the ChromaDB index
+• src/rag_chatbot.py — retrieval + generation chat loop
+
+## Note on API Access
+The Claude API requires network access to api.anthropic.com. The retrieval component (embedding + ChromaDB search) runs fully locally with no internet required. The generation step requires an active Anthropic API key set in .env.
+
 # DEFINITIONS
 - epoch: one complete pass of the entire training dataset through the neural network model
 - class imbalance: refers to a situation where the number of examples in each class is unevenly distributed. 

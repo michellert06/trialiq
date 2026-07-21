@@ -11,3 +11,8 @@ imbalanced-learn
 joblib
 torch
 transformers
+chromadb
+sentence-transformers
+anthropic
+python-dotenv
+
